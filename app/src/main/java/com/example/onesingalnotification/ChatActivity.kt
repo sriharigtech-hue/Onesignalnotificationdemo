@@ -29,7 +29,7 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
-        receiverId = intent.getStringExtra("receiverId")!!
+        receiverId = intent.getStringExtra("receiverId") ?: return
 
         etMsg = findViewById(R.id.etMessage)
         btnSend = findViewById(R.id.btnSend)
@@ -65,14 +65,14 @@ class ChatActivity : AppCompatActivity() {
             "time" to System.currentTimeMillis()
         )
 
-        // ✅ SAVE MESSAGE TO FIRESTORE
+        //  SAVE MESSAGE TO FIRESTORE
         FirebaseFirestore.getInstance()
             .collection("chats")
             .document(chatId)
             .collection("messages")
             .add(map)
             .addOnSuccessListener {
-                // ✅ AFTER SAVING MESSAGE → SEND PUSH
+                //  AFTER SAVING MESSAGE → SEND PUSH
                 sendOneSignalPush(receiverId, message)
             }
     }
@@ -104,67 +104,49 @@ class ChatActivity : AppCompatActivity() {
                 }
 
                 adapter.notifyDataSetChanged()
+                recyclerView.scrollToPosition(messageList.size - 1)
+
             }
     }
     private fun sendOneSignalPush(receiverId: String, message: String) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("users").document(receiverId).get().addOnSuccessListener { doc ->
+            val oneSignalId = doc.getString("oneSignalId") ?: return@addOnSuccessListener
+            if (oneSignalId.isEmpty()) return@addOnSuccessListener
 
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(receiverId)
-            .get()
-            .addOnSuccessListener { doc ->
-
-                val oneSignalId = doc.getString("oneSignalId") ?: return@addOnSuccessListener
-                println("OneSignal Targeting ID: $oneSignalId")
-                if (oneSignalId.isNullOrEmpty()) {
-                    println("❌ OneSignal ID Not Found")
-                    return@addOnSuccessListener
-                }
-
-                val jsonBody = """
-            {
-              "app_id": "c6826e50-d417-4207-a901-b92979d03b03",
-              "include_player_ids": ["$oneSignalId"],
-              "headings": {"en": "New Message"},
-              "contents": {"en": "$message"}
-            }
-        """.trimIndent()
-
-                val requestBody =
-                    jsonBody.toRequestBody("application/json".toMediaType())
-
-                val request = Request.Builder()
-                    .url("https://onesignal.com/api/v1/notifications")
-                    .addHeader(
-                        "Authorization",
-                        "Basic hscbqnzmnubh4y4irv7zifgsg"
-                    )
-                    .addHeader("Content-Type", "application/json")
-                    .post(requestBody)
-                    .build()
-
-                val client = OkHttpClient()
-
-                client.newCall(request).enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        e.printStackTrace()
-                    }
-
-                    override fun onResponse(call: Call, response: Response) {
-                        val res = response.body?.string()
-                        println("✅ OneSignal Code: ${response.code}")
-                        println("✅ OneSignal Response: $res")
-                        runOnUiThread {
-                            android.widget.Toast.makeText(
-                                this@ChatActivity,
-                                "✅ Push request sent to OneSignal",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
+            val jsonBody = """
+                        {
+                          "app_id": "c6826e50-d417-4207-a901-b92979d03b03",
+                          "include_player_ids": ["$oneSignalId"],
+                                                    
+                              "android_group": "CHAT_$receiverId",
+                              "android_group_message": {
+                                "en": "New messages from chat"
+                              },
+                        
+                          "headings": {"en": "New Message"},
+                          "contents": {"en": "$message"}
                         }
+                        """.trimIndent()
 
-                    }
-                })
-            }
+
+            val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url("https://onesignal.com/api/v1/notifications")
+                .addHeader("Authorization", "Basic os_v2_app_y2bg4uguc5bapkibxeuxtub3aprie3kg6iwuznfsab6kl55xd54dnjxwunfv5i4po4nwcasl5ny6svvemhq2quif7vzv3wl34kig3ba")
+                .addHeader("Content-Type", "application/json")
+                .post(requestBody)
+                .build()
+
+            OkHttpClient().newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) = e.printStackTrace()
+                override fun onResponse(call: Call, response: Response) {
+                    val res = response.body?.string()
+                    println("OneSignal Response Code: ${response.code}")
+                    println("OneSignal Response Body: $res")
+                }
+            })
+        }
     }
 
 

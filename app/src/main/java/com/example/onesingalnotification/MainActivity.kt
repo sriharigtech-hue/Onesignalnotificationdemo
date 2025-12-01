@@ -17,6 +17,26 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etReceiverUid: EditText
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val currentUser = FirebaseAuth.getInstance().currentUser
+
+        //  USER ALREADY LOGGED IN → DIRECTLY OPEN CHAT
+        if (currentUser != null) {
+
+            //  GET LAST SAVED RECEIVER ID
+            val savedReceiverId = getSharedPreferences("chat", MODE_PRIVATE)
+                .getString("receiverId", null)
+
+            if (savedReceiverId != null) {
+                val intent = Intent(this, ChatActivity::class.java)
+                intent.putExtra("receiverId", savedReceiverId)
+                startActivity(intent)
+                finish()
+                return
+            }
+        }
+
+        //  USER NOT LOGGED IN → SHOW LOGIN SCREEN
         setContentView(R.layout.activity_main)
 
         etEmail = findViewById(R.id.etEmail)
@@ -29,7 +49,7 @@ class MainActivity : AppCompatActivity() {
             val password = etPassword.text.toString()
             val receiverUid = etReceiverUid.text.toString()
 
-            if(email.isEmpty() || password.isEmpty() || receiverUid.isEmpty()){
+            if (email.isEmpty() || password.isEmpty() || receiverUid.isEmpty()) {
                 Toast.makeText(this, "Fill all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -41,6 +61,11 @@ class MainActivity : AppCompatActivity() {
         FirebaseAuth.getInstance()
             .signInWithEmailAndPassword(email, password)
             .addOnSuccessListener {
+                //  SAVE RECEIVER ID FOR NEXT APP OPEN
+                getSharedPreferences("chat", MODE_PRIVATE)
+                    .edit()
+                    .putString("receiverId", receiverUid)
+                    .apply()
                 saveUserToFirestore()
 
                 val intent = Intent(this, ChatActivity::class.java)
