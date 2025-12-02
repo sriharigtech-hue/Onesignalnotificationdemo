@@ -1,6 +1,7 @@
 package com.example.onesingalnotification
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.EditText
 import android.widget.ImageView
@@ -113,6 +114,7 @@ class ChatActivity : AppCompatActivity() {
         db.collection("users").document(receiverId).get().addOnSuccessListener { doc ->
             val oneSignalId = doc.getString("oneSignalId") ?: return@addOnSuccessListener
             if (oneSignalId.isEmpty()) return@addOnSuccessListener
+            Log.d("OneSignalPush", "Receiver: $receiverId, OneSignalID: $oneSignalId")
 
             val jsonBody = """
                         {
@@ -133,7 +135,7 @@ class ChatActivity : AppCompatActivity() {
             val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
                 .url("https://onesignal.com/api/v1/notifications")
-                .addHeader("Authorization", "Basic os_v2_app_y2bg4uguc5bapkibxeuxtub3aprie3kg6iwuznfsab6kl55xd54dnjxwunfv5i4po4nwcasl5ny6svvemhq2quif7vzv3wl34kig3ba")
+                .addHeader("Authorization", "Basic os_v2_app_y2bg4uguc5bapkibxeuxtub3am63diof7zke6kfpqeiozg5ugkwadavamtbcyy34ccmqj6rz4iipacp4yrntdkaiexjf6p7k555j32q")
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)
                 .build()

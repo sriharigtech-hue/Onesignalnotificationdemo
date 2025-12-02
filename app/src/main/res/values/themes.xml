@@ -1,9 +1,20 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+
+    <!-- Base application theme -->
     <style name="Base.Theme.Onesingalnotification" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- Customize your light theme here -->
     </style>
 
     <style name="Theme.Onesingalnotification" parent="Base.Theme.Onesingalnotification" />
+
+    <!-- Profile Dialog Popup Theme -->
+    <style name="DialogTheme" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+        <item name="android:windowMinWidthMajor">75%</item>
+        <item name="android:windowMinWidthMinor">75%</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="cornerRadius">16dp</item> <!-- Optional: rounded corners -->
+    </style>
+
 </resources>

@@ -10,85 +10,79 @@ import android.widget.Button
 import android.widget.EditText
 
 import android.widget.Toast
+import com.google.firebase.firestore.SetOptions
+
 class MainActivity : AppCompatActivity() {
+
     private lateinit var etEmail: EditText
     private lateinit var etPassword: EditText
     private lateinit var btnLogin: Button
-    private lateinit var etReceiverUid: EditText
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val currentUser = FirebaseAuth.getInstance().currentUser
-
-        //  USER ALREADY LOGGED IN → DIRECTLY OPEN CHAT
         if (currentUser != null) {
-
-            //  GET LAST SAVED RECEIVER ID
-            val savedReceiverId = getSharedPreferences("chat", MODE_PRIVATE)
-                .getString("receiverId", null)
-
-            if (savedReceiverId != null) {
-                val intent = Intent(this, ChatActivity::class.java)
-                intent.putExtra("receiverId", savedReceiverId)
-                startActivity(intent)
-                finish()
-                return
-            }
+            startActivity(Intent(this, UsersActivity::class.java))
+            finish()
+            return
         }
 
-        //  USER NOT LOGGED IN → SHOW LOGIN SCREEN
         setContentView(R.layout.activity_main)
 
         etEmail = findViewById(R.id.etEmail)
         etPassword = findViewById(R.id.etPassword)
         btnLogin = findViewById(R.id.btnLogin)
-        etReceiverUid = findViewById(R.id.etReceiverUid)
 
         btnLogin.setOnClickListener {
             val email = etEmail.text.toString()
             val password = etPassword.text.toString()
-            val receiverUid = etReceiverUid.text.toString()
 
-            if (email.isEmpty() || password.isEmpty() || receiverUid.isEmpty()) {
+            if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Fill all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            login(email, password, receiverUid)
+            login(email, password)
         }
     }
-    private fun login(email: String, password: String, receiverUid: String) {
+
+    private fun login(email: String, password: String) {
         FirebaseAuth.getInstance()
             .signInWithEmailAndPassword(email, password)
             .addOnSuccessListener {
-                //  SAVE RECEIVER ID FOR NEXT APP OPEN
-                getSharedPreferences("chat", MODE_PRIVATE)
-                    .edit()
-                    .putString("receiverId", receiverUid)
-                    .apply()
                 saveUserToFirestore()
-
-                val intent = Intent(this, ChatActivity::class.java)
-                intent.putExtra("receiverId", receiverUid)
-                startActivity(intent)
+                startActivity(Intent(this, UsersActivity::class.java))
                 finish()
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Login Failed: ${it.message}", Toast.LENGTH_SHORT).show()
             }
     }
+
     private fun saveUserToFirestore() {
-        val uid = FirebaseAuth.getInstance().uid!!
-        val oneSignalId = OneSignal.User.pushSubscription.id
+        val uid = FirebaseAuth.getInstance().uid ?: return
+
+        val subscription = OneSignal.User.pushSubscription
+
+        val oneSignalId = subscription.id
+
+        if (oneSignalId.isNullOrEmpty()) {
+            Toast.makeText(this, "OneSignal ID not ready yet", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         val map = hashMapOf(
             "uid" to uid,
+            "name" to etEmail.text.toString().substringBefore("@"),
             "oneSignalId" to oneSignalId
         )
 
         FirebaseFirestore.getInstance()
             .collection("users")
             .document(uid)
-            .set(map)
+            .set(map, SetOptions.merge())
     }
+
+
 }
