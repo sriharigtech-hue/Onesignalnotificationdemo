@@ -26,9 +26,13 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var btnSend: ImageView
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ChatAdapter
-    private val messageList = ArrayList<ChatModel>()
+    private val chatItemList = ArrayList<ChatItem>()
+
     private lateinit var receiverId: String
     private lateinit var tvTyping: TextView
+    private lateinit var tvStickyDate: TextView
+    private var lastStickyDate: String? = null
+
 
     // 🔹 SECOND USER ID (Use real UID from Firestore)
 //    private val receiverId = "kcMpNTl4gDVNZfSdomI7qZe5ZmC2"
@@ -43,10 +47,51 @@ class ChatActivity : AppCompatActivity() {
         btnSend = findViewById(R.id.btnSend)
         recyclerView = findViewById(R.id.recyclerChat)
 
-        adapter = ChatAdapter(messageList)
+        adapter = ChatAdapter(chatItemList)
+
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
+
         tvTyping = findViewById(R.id.tvTyping)
+        tvStickyDate = findViewById(R.id.tvStickyDate)
+        tvStickyDate.alpha = 1f
+        tvStickyDate.visibility = View.VISIBLE
+
+
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                val firstVisiblePos = layoutManager.findFirstVisibleItemPosition()
+                if (firstVisiblePos != RecyclerView.NO_POSITION) {
+                    var dateToShow: String? = null
+
+                    // Find the nearest previous date header
+                    for (i in firstVisiblePos downTo 0) {
+                        val prevItem = chatItemList[i]
+                        if (prevItem is ChatItem.DateItem) {
+                            dateToShow = prevItem.dateText
+                            break
+                        }
+                    }
+
+                    dateToShow?.let { date ->
+                        if (date != lastStickyDate) {
+                            tvStickyDate.animate().alpha(0f).setDuration(100).withEndAction {
+                                tvStickyDate.text = date
+                                tvStickyDate.animate().alpha(1f).setDuration(200).start()
+                            }.start()
+                            lastStickyDate = date
+                            tvStickyDate.visibility = View.VISIBLE
+                        }
+                    }
+                }
+            }
+        })
+
+
+
 
         btnSend.setOnClickListener {
             if (etMsg.text.isNotEmpty()) {
@@ -117,7 +162,9 @@ class ChatActivity : AppCompatActivity() {
             .orderBy("time")
             .addSnapshotListener { value, _ ->
 
-                messageList.clear()
+                chatItemList.clear()
+
+                var lastDate = ""
 
                 value?.forEach {
                     val msg = ChatModel(
@@ -127,14 +174,63 @@ class ChatActivity : AppCompatActivity() {
                         it.getString("status") ?: "sent"
                     )
 
-                    messageList.add(msg)
-                }
+                    val dateLabel = getDateLabel(msg.time)
 
+                    // ADD DATE HEADER ONLY ONCE
+                    if (dateLabel != lastDate) {
+                        chatItemList.add(ChatItem.DateItem(dateLabel))
+                        lastDate = dateLabel
+                    }
+
+                    // ADD MESSAGE
+                    chatItemList.add(ChatItem.MessageItem(msg))
+                }
                 adapter.notifyDataSetChanged()
-                recyclerView.scrollToPosition(messageList.size - 1)
+                recyclerView.scrollToPosition(chatItemList.size - 1)
+
 
             }
+        markMessagesDelivered(chatId)
+
     }
+    private fun markMessagesDelivered(chatId: String) {
+        val myUid = FirebaseAuth.getInstance().uid!!
+
+        FirebaseFirestore.getInstance()
+            .collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .whereEqualTo("receiverId", myUid)
+            .whereEqualTo("status", "sent")
+            .get()
+            .addOnSuccessListener {
+                for (doc in it.documents) {
+                    doc.reference.update("status", "delivered")
+                }
+            }
+    }
+
+    private fun getDateLabel(time: Long): String {
+        val now = System.currentTimeMillis()
+
+        val oneDay = 24 * 60 * 60 * 1000
+        return when {
+            android.text.format.DateFormat.format("yyyyMMdd", time) ==
+                    android.text.format.DateFormat.format("yyyyMMdd", now) -> {
+                "Today"
+            }
+
+            android.text.format.DateFormat.format("yyyyMMdd", time) ==
+                    android.text.format.DateFormat.format("yyyyMMdd", now - oneDay) -> {
+                "Yesterday"
+            }
+
+            else -> {
+                android.text.format.DateFormat.format("dd MMM yyyy", time).toString()
+            }
+        }
+    }
+
     private fun listenTypingStatus() {
         val myUid = FirebaseAuth.getInstance().uid!!
         val chatId =
@@ -197,7 +293,31 @@ class ChatActivity : AppCompatActivity() {
         super.onStop()
         updateTypingStatus(false)
     }
+    override fun onResume() {
+        super.onResume()
+        markMessagesSeen()
+    }
 
+
+    private fun markMessagesSeen() {
+        val myUid = FirebaseAuth.getInstance().uid!!
+        val chatId =
+            if (myUid < receiverId) "${myUid}_${receiverId}"
+            else "${receiverId}_${myUid}"
+
+        FirebaseFirestore.getInstance()
+            .collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .whereEqualTo("receiverId", myUid)
+            .whereEqualTo("status", "delivered")
+            .get()
+            .addOnSuccessListener {
+                for (doc in it.documents) {
+                    doc.reference.update("status", "seen")
+                }
+            }
+    }
 
     private fun updateTypingStatus(isTyping: Boolean) {
         val myUid = FirebaseAuth.getInstance().uid!!

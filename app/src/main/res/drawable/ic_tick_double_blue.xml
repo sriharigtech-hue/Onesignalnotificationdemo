@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="16dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- First tick -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M1.5,12.5l4.5,4.5L11,12l-1.41,-1.41L6,14.67L2.91,11.59z"/>
+    <!-- Second tick -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M9,16.17L4.83,12l-1.42,1.41L9,19l12,-12l-1.41,-1.41L9,16.17z"/>
+</vector>
