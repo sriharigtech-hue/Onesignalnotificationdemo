@@ -1,34 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#F5F6FA">
 
+    <!-- CHAT LIST -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerChat"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:padding="8dp"/>
+        android:layout_height="match_parent"
+        android:layout_above="@id/bottomBar"
+        android:padding="12dp"
+        android:clipToPadding="false" />
 
+    <!-- TYPING INDICATOR -->
+    <TextView
+        android:id="@+id/tvTyping"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/bottomBar"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="4dp"
+        android:text="typing…"
+        android:textSize="12sp"
+        android:textStyle="italic"
+        android:textColor="#7A7A7A"
+        android:visibility="gone" />
+
+    <!-- BOTTOM INPUT BAR -->
     <LinearLayout
-        android:orientation="horizontal"
+        android:id="@+id/bottomBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="8dp">
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#FFFFFF"
+        android:elevation="8dp">
 
+        <!-- MESSAGE INPUT -->
         <EditText
             android:id="@+id/etMessage"
-            android:hint="Type message"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="wrap_content"/>
+            android:layout_height="48dp"
+            android:hint="Type a message"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:textSize="15sp"
+            android:background="@drawable/bg_chat_input"
+            android:inputType="textMultiLine"
+            android:maxLines="4" />
 
+        <!-- SEND BUTTON -->
         <ImageView
             android:id="@+id/btnSend"
-            android:src="@android:drawable/ic_menu_send"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:padding="8dp"/>
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_send_button"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_send"
+            android:tint="@android:color/white" />
     </LinearLayout>
-</LinearLayout>
+
+</RelativeLayout>

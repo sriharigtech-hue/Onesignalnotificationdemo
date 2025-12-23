@@ -1,10 +1,12 @@
 package com.example.onesingalnotification
 
 import android.os.Bundle
+import android.text.Editable
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
@@ -14,6 +16,9 @@ import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import android.text.TextWatcher
+import android.view.View
+import com.google.firebase.firestore.SetOptions
 
 
 class ChatActivity : AppCompatActivity() {
@@ -23,6 +28,8 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var adapter: ChatAdapter
     private val messageList = ArrayList<ChatModel>()
     private lateinit var receiverId: String
+    private lateinit var tvTyping: TextView
+
     // 🔹 SECOND USER ID (Use real UID from Firestore)
 //    private val receiverId = "kcMpNTl4gDVNZfSdomI7qZe5ZmC2"
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,6 +46,7 @@ class ChatActivity : AppCompatActivity() {
         adapter = ChatAdapter(messageList)
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
+        tvTyping = findViewById(R.id.tvTyping)
 
         btnSend.setOnClickListener {
             if (etMsg.text.isNotEmpty()) {
@@ -46,8 +54,19 @@ class ChatActivity : AppCompatActivity() {
                 etMsg.setText("")
             }
         }
+        etMsg.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {}
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                updateTypingStatus(s?.isNotEmpty() == true)
+            }
+        })
+
 
         loadMessages()
+        listenTypingStatus()
 
     }
     private fun sendMessage(message: String) {
@@ -63,8 +82,10 @@ class ChatActivity : AppCompatActivity() {
             "senderId" to senderId,
             "receiverId" to receiverId,
             "text" to message,
-            "time" to System.currentTimeMillis()
+            "time" to System.currentTimeMillis(),
+            "status" to "sent"   // NEW
         )
+
 
         //  SAVE MESSAGE TO FIRESTORE
         FirebaseFirestore.getInstance()
@@ -76,6 +97,8 @@ class ChatActivity : AppCompatActivity() {
                 //  AFTER SAVING MESSAGE → SEND PUSH
                 sendOneSignalPush(receiverId, message)
             }
+        updateTypingStatus(false)
+
     }
 
     private fun loadMessages() {
@@ -99,8 +122,11 @@ class ChatActivity : AppCompatActivity() {
                 value?.forEach {
                     val msg = ChatModel(
                         it.getString("senderId")!!,
-                        it.getString("text")!!
+                        it.getString("text")!!,
+                        it.getLong("time") ?: 0L,
+                        it.getString("status") ?: "sent"
                     )
+
                     messageList.add(msg)
                 }
 
@@ -109,6 +135,23 @@ class ChatActivity : AppCompatActivity() {
 
             }
     }
+    private fun listenTypingStatus() {
+        val myUid = FirebaseAuth.getInstance().uid!!
+        val chatId =
+            if (myUid < receiverId) "${myUid}_${receiverId}"
+            else "${receiverId}_${myUid}"
+
+        FirebaseFirestore.getInstance()
+            .collection("typing")
+            .document(chatId)
+            .addSnapshotListener { value, _ ->
+                if (value != null && value.exists()) {
+                    val isTyping = value.getBoolean(receiverId) ?: false
+                    tvTyping.visibility = if (isTyping) View.VISIBLE else View.GONE
+                }
+            }
+    }
+
     private fun sendOneSignalPush(receiverId: String, message: String) {
         val db = FirebaseFirestore.getInstance()
         db.collection("users").document(receiverId).get().addOnSuccessListener { doc ->
@@ -135,7 +178,7 @@ class ChatActivity : AppCompatActivity() {
             val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
                 .url("https://onesignal.com/api/v1/notifications")
-                .addHeader("Authorization", "Basic os_v2_app_y2bg4uguc5bapkibxeuxtub3am63diof7zke6kfpqeiozg5ugkwadavamtbcyy34ccmqj6rz4iipacp4yrntdkaiexjf6p7k555j32q")
+                .addHeader("Authorization", "Basic os_v2_app_y2bg4uguc5bapkibxeuxtub3ap47mc4j6e3ue5vwrulerlradw2dlh7vasrx5quf6httwcd3ngxc42sfag55a5yrwfxv22da6iet4uy")
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)
                 .build()
@@ -150,6 +193,23 @@ class ChatActivity : AppCompatActivity() {
             })
         }
     }
+    override fun onStop() {
+        super.onStop()
+        updateTypingStatus(false)
+    }
 
+
+    private fun updateTypingStatus(isTyping: Boolean) {
+        val myUid = FirebaseAuth.getInstance().uid!!
+        val chatId =
+            if (myUid < receiverId) "${myUid}_${receiverId}"
+            else "${receiverId}_${myUid}"
+
+        FirebaseFirestore.getInstance()
+            .collection("typing")
+            .document(chatId)
+            .set(mapOf(myUid to isTyping), SetOptions.merge())
+
+    }
 
 }

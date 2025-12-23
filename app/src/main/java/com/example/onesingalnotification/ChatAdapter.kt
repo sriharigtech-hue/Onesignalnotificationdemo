@@ -20,6 +20,7 @@ class ChatAdapter(private val list: List<ChatModel>) :
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvMsg: TextView = view.findViewById(R.id.tvMessage)
+        val tvTime: TextView = view.findViewById(R.id.tvTime)
     }
 
 
@@ -37,6 +38,11 @@ class ChatAdapter(private val list: List<ChatModel>) :
     override fun getItemCount() = list.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.tvMsg.text = list[position].message
+        val chat = list[position]
+        holder.tvMsg.text = chat.message
+
+        // Format timestamp to hh:mm a
+        val timeText = android.text.format.DateFormat.format("hh:mm a", chat.time).toString()
+        holder.tvTime.text = timeText
     }
 }

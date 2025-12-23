@@ -2,15 +2,28 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="start"
-    android:padding="8dp">
+    android:padding="4dp"
+    android:orientation="vertical">
 
+    <!-- MESSAGE BUBBLE -->
     <TextView
         android:id="@+id/tvMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:background="@drawable/bg_receiver"
         android:padding="12dp"
         android:textColor="@android:color/black"
         android:textSize="14sp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:maxWidth="250dp"
+        android:lineSpacingExtra="2dp"/>
 
+    <!-- TIME -->
+    <TextView
+        android:id="@+id/tvTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="10:45 AM"
+        android:textSize="11sp"
+        android:textColor="#888888"
+        android:paddingTop="2dp"/>
 </LinearLayout>

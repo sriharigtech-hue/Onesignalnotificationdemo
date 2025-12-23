@@ -30,8 +30,8 @@
             android:id="@+id/ivSearch"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:layout_marginStart="auto"
-            android:src="@drawable/ic_search_white"
+
+
             android:contentDescription="Search" />
     </LinearLayout>
 
