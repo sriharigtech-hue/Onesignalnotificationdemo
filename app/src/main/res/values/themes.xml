@@ -2,19 +2,33 @@
 
     <!-- Base application theme -->
     <style name="Base.Theme.Onesingalnotification" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here -->
+        <item name="colorPrimary">@color/primary_color</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/secondary_color</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:statusBarColor">@color/primary_variant</item>
+        <item name="android:windowBackground">@color/background_light</item>
     </style>
 
     <style name="Theme.Onesingalnotification" parent="Base.Theme.Onesingalnotification" />
 
     <!-- Profile Dialog Popup Theme -->
     <style name="DialogTheme" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowNoTitle">true</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
-        <item name="android:windowMinWidthMajor">75%</item>
-        <item name="android:windowMinWidthMinor">75%</item>
+        <item name="android:windowMinWidthMajor">85%</item>
+        <item name="android:windowMinWidthMinor">85%</item>
         <item name="android:backgroundDimEnabled">true</item>
-        <item name="cornerRadius">16dp</item> <!-- Optional: rounded corners -->
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.App.MediumComponent</item>
     </style>
+    
+    <style name="ShapeAppearance.App.MediumComponent" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+
+
 
 </resources>

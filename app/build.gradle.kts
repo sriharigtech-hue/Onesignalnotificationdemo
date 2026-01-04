@@ -38,6 +38,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 
@@ -60,6 +61,6 @@ dependencies {
     implementation ("com.google.firebase:firebase-messaging")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("de.hdodenhof:circleimageview:3.1.0")
-
+    implementation("io.agora.rtc:full-sdk:4.2.1")
 
 }

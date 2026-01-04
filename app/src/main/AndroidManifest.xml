@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
@@ -19,11 +21,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Onesingalnotification">
         <activity
+            android:name=".call.CallActivity"
+            android:exported="false" />
+        <activity
             android:name=".ProfileActivity"
-            android:theme="@style/DialogTheme"
-            android:exported="true">
-
-        </activity>
+            android:exported="true"
+            android:theme="@style/DialogTheme"></activity>
         <activity
             android:name=".ChatActivity"
             android:exported="false" />
@@ -39,6 +42,7 @@
         <activity
             android:name=".UsersActivity"
             android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -49,6 +53,5 @@
                 android:resource="@xml/file_paths" />
         </provider>
     </application>
-
 
 </manifest>

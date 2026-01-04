@@ -1,5 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!-- Brand Colors -->
+    <color name="primary_color">#673AB7</color> <!-- Deep Purple -->
+    <color name="primary_variant">#512DA8</color>
+    <color name="secondary_color">#009688</color> <!-- Teal -->
+    <color name="accent_color">#FFC107</color> <!-- Amber -->
+
+    <!-- Backgrounds -->
+    <color name="background_light">#F5F5FA</color>
+    <color name="surface_white">#FFFFFF</color>
+    
+    <!-- Text -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_white">#FFFFFF</color>
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    
+    <!-- Status Colors -->
+    <color name="success">#4CAF50</color>
+    <color name="error">#F44336</color>
 </resources>

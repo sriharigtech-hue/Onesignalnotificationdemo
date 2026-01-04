@@ -1,5 +1,7 @@
 package com.example.onesingalnotification
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.util.Log
@@ -18,12 +20,15 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import android.text.TextWatcher
 import android.view.View
+import com.example.onesingalnotification.call.CallActivity
 import com.google.firebase.firestore.SetOptions
 
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+
 class ChatActivity : AppCompatActivity() {
     private lateinit var etMsg: EditText
-    private lateinit var btnSend: ImageView
+    private lateinit var btnSend: FloatingActionButton
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ChatAdapter
     private val chatItemList = ArrayList<ChatItem>()
@@ -32,6 +37,10 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var tvTyping: TextView
     private lateinit var tvStickyDate: TextView
     private var lastStickyDate: String? = null
+    private lateinit var tvUserName: TextView
+    private lateinit var btnBack: ImageView
+    private lateinit var tvLastSeen: TextView
+
 
 
     // 🔹 SECOND USER ID (Use real UID from Firestore)
@@ -40,8 +49,10 @@ class ChatActivity : AppCompatActivity() {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
-
-        receiverId = intent.getStringExtra("receiverId") ?: return
+        receiverId = intent.getStringExtra("receiverId") ?: run {
+            finish()
+            return
+        }
 
         etMsg = findViewById(R.id.etMessage)
         btnSend = findViewById(R.id.btnSend)
@@ -56,6 +67,14 @@ class ChatActivity : AppCompatActivity() {
         tvStickyDate = findViewById(R.id.tvStickyDate)
         tvStickyDate.alpha = 1f
         tvStickyDate.visibility = View.VISIBLE
+        tvUserName = findViewById(R.id.tvUserName)
+        btnBack = findViewById(R.id.btnBack)
+        tvLastSeen = findViewById(R.id.tvLastSeen)
+
+
+        btnBack.setOnClickListener {
+            finish()
+        }
 
 
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -109,11 +128,168 @@ class ChatActivity : AppCompatActivity() {
             }
         })
 
-
+        loadReceiverName()
         loadMessages()
         listenTypingStatus()
+        listenUserOnlineStatus()
+        listenIncomingCalls()
 
+        setupBottomTabs()
     }
+
+    private fun setupBottomTabs() {
+        val tabChat = findViewById<android.widget.LinearLayout>(R.id.tabChat)
+        val tabCall = findViewById<android.widget.LinearLayout>(R.id.tabCall)
+        val containerChat = findViewById<androidx.constraintlayout.widget.ConstraintLayout>(R.id.containerChat)
+        val containerCall = findViewById<androidx.constraintlayout.widget.ConstraintLayout>(R.id.containerCall)
+        val btnCallAction = findViewById<FloatingActionButton>(R.id.btnCallAction)
+        val tvNameCall = findViewById<TextView>(R.id.tvNameCall)
+        val imgProfileCall = findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.imgProfileCall)
+
+        // CHAT TAB CLICK
+        tabChat.setOnClickListener {
+            containerChat.visibility = View.VISIBLE
+            containerCall.visibility = View.GONE
+            updateTabStyles(isChatSelected = true)
+        }
+
+        // CALL TAB CLICK
+        tabCall.setOnClickListener {
+            containerChat.visibility = View.GONE
+            containerCall.visibility = View.VISIBLE
+            updateTabStyles(isChatSelected = false)
+
+            // Bind Data to Call UI
+            tvNameCall.text = tvUserName.text
+            // Placeholder image for now as we don't have profile image URL in Firestore yet
+             imgProfileCall.setImageResource(R.mipmap.ic_launcher) 
+        }
+
+        // CALL BUTTON ACTION
+        btnCallAction.setOnClickListener {
+            startVoiceCall(
+                context = this,
+                callerId = FirebaseAuth.getInstance().uid!!,
+                callerName = tvUserName.text.toString(), // Using username from toolbar logic
+                receiverId = receiverId,
+                receiverOneSignalId = "" // Handled in startVoiceCall locally usually or modify to fetch
+            )
+        }
+    }
+
+    private fun updateTabStyles(isChatSelected: Boolean) {
+        val tabChat = findViewById<android.widget.LinearLayout>(R.id.tabChat)
+        val tabCall = findViewById<android.widget.LinearLayout>(R.id.tabCall)
+        
+        val chatIcon = tabChat.getChildAt(0) as ImageView
+        val chatText = tabChat.getChildAt(1) as TextView
+        val callIcon = tabCall.getChildAt(0) as ImageView
+        val callText = tabCall.getChildAt(1) as TextView
+        
+        val colorActive = resources.getColor(R.color.primary_color)
+        val colorInactive = 0xFF9E9E9E.toInt()
+
+        if (isChatSelected) {
+            chatIcon.setColorFilter(colorActive)
+            chatText.setTextColor(colorActive)
+            
+            callIcon.setColorFilter(colorInactive)
+            callText.setTextColor(colorInactive)
+        } else {
+            chatIcon.setColorFilter(colorInactive)
+            chatText.setTextColor(colorInactive)
+            
+            callIcon.setColorFilter(colorActive)
+            callText.setTextColor(colorActive)
+        }
+    }
+    private fun listenIncomingCalls() {
+        val firestore = FirebaseFirestore.getInstance()
+        firestore.collection("calls")
+            .whereEqualTo("receiverId", FirebaseAuth.getInstance().uid)
+            .whereEqualTo("status", "calling")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null && !snapshot.isEmpty) {
+                    for (doc in snapshot.documents) {
+                        val callId = doc.id
+                        val callerName = doc.getString("callerName") ?: "Caller"
+                        val channel = doc.getString("channel") ?: "default_channel"
+
+                        val intent = Intent(this, CallActivity::class.java)
+                        intent.putExtra("callId", callId)
+                        intent.putExtra("channel", channel)
+                        intent.putExtra("callerName", callerName)
+                        startActivity(intent)
+                    }
+                }
+            }
+    }
+
+    private fun listenUserOnlineStatus() {
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(receiverId)
+            .addSnapshotListener { doc, _ ->
+                if (doc != null && doc.exists()) {
+
+                    val isOnline = doc.getBoolean("online") ?: false
+
+                    if (isOnline) {
+                        tvLastSeen.text = "Online"
+                        tvLastSeen.setTextColor(
+                            resources.getColor(android.R.color.holo_green_dark)
+                        )
+                    } else {
+                        val lastSeen = doc.getLong("lastSeen") ?: 0L
+                        tvLastSeen.text = "Last seen ${formatLastSeen(lastSeen)}"
+                        tvLastSeen.setTextColor(
+                            resources.getColor(android.R.color.darker_gray)
+                        )
+                    }
+                }
+            }
+    }
+    private fun formatLastSeen(time: Long): String {
+        if (time == 0L) return "recently"
+
+        val now = System.currentTimeMillis()
+        val diff = now - time
+
+        val oneDay = 24 * 60 * 60 * 1000
+
+        return when {
+            diff < oneDay -> {
+                val t = android.text.format.DateFormat.format("hh:mm a", time)
+                "today at $t"
+            }
+            diff < 2 * oneDay -> {
+                val t = android.text.format.DateFormat.format("hh:mm a", time)
+                "yesterday at $t"
+            }
+            else -> {
+                android.text.format.DateFormat.format("dd MMM, hh:mm a", time).toString()
+            }
+        }
+    }
+
+    private fun loadReceiverName() {
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(receiverId)   // 👈 opposite user
+            .get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val name = document.getString("name") ?: "Chat"
+                    tvUserName.text = name
+                } else {
+                    tvUserName.text = "Chat"
+                }
+            }
+            .addOnFailureListener {
+                tvUserName.text = "Chat"
+            }
+    }
+
     private fun sendMessage(message: String) {
 
         val senderId = FirebaseAuth.getInstance().uid!!
@@ -274,7 +450,7 @@ class ChatActivity : AppCompatActivity() {
             val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
                 .url("https://onesignal.com/api/v1/notifications")
-                .addHeader("Authorization", "Basic os_v2_app_y2bg4uguc5bapkibxeuxtub3ap47mc4j6e3ue5vwrulerlradw2dlh7vasrx5quf6httwcd3ngxc42sfag55a5yrwfxv22da6iet4uy")
+                .addHeader("Authorization", "Basic os_v2_app_y2bg4uguc5bapkibxeuxtub3anwsc7lsdmoe6imnjdcbtaltdhz73oamlkxfzxyjgdcq2xh3m26hsx4hjg4aqkwjvc7debuoves7sfi")
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)
                 .build()
@@ -331,5 +507,65 @@ class ChatActivity : AppCompatActivity() {
             .set(mapOf(myUid to isTyping), SetOptions.merge())
 
     }
+    fun startVoiceCall(
+        context: Context,
+        callerId: String,
+        callerName: String,
+        receiverId: String,
+        receiverOneSignalId: String
+    ) {
+        val firestore = FirebaseFirestore.getInstance()
+        val callDoc = firestore.collection("calls").document()
+        val channelName = "channel_${System.currentTimeMillis()}" // unique channel
+
+        val callData = hashMapOf(
+            "callerId" to callerId,
+            "callerName" to callerName,
+            "receiverId" to receiverId,
+            "channel" to channelName,
+            "status" to "calling",
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        // Save call document
+        callDoc.set(callData)
+
+        // Send OneSignal push to receiver
+        if (receiverOneSignalId.isNotEmpty()) {
+            sendOneSignalCallPush(receiverOneSignalId, callerName)
+        }
+
+        // Open CallActivity
+        val intent = Intent(context, CallActivity::class.java)
+        intent.putExtra("callId", callDoc.id)
+        intent.putExtra("channel", channelName)
+        intent.putExtra("callerName", callerName)
+        context.startActivity(intent)
+    }
+
+    fun sendOneSignalCallPush(oneSignalId: String, callerName: String) {
+        val jsonBody = """
+        {
+          "app_id": "c6826e50-d417-4207-a901-b92979d03b03",
+          "include_player_ids": ["$oneSignalId"],
+          "headings": {"en": "Incoming Call"},
+          "contents": {"en": "$callerName is calling you"}
+        }
+    """.trimIndent()
+
+        val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
+        val request = Request.Builder()
+            .url("https://onesignal.com/api/v1/notifications")
+            .addHeader("Authorization", "Basic os_v2_app_y2bg4uguc5bapkibxeuxtub3anwsc7lsdmoe6imnjdcbtaltdhz73oamlkxfzxyjgdcq2xh3m26hsx4hjg4aqkwjvc7debuoves7sfi")
+            .addHeader("Content-Type", "application/json")
+            .post(requestBody)
+            .build()
+
+        OkHttpClient().newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) = e.printStackTrace()
+            override fun onResponse(call: Call, response: Response) { /* optional log */ }
+        })
+    }
+
 
 }

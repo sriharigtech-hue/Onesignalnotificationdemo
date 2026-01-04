@@ -32,4 +32,4 @@ exports.sendPushOnMessage = functions.firestore
     };
 
     await client.createNotification(notification);
-});
+  });

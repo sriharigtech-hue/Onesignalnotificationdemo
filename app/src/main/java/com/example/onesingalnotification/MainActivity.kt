@@ -64,18 +64,14 @@ class MainActivity : AppCompatActivity() {
         val uid = FirebaseAuth.getInstance().uid ?: return
 
         val subscription = OneSignal.User.pushSubscription
-
-        val oneSignalId = subscription.id
-
-        if (oneSignalId.isNullOrEmpty()) {
-            Toast.makeText(this, "OneSignal ID not ready yet", Toast.LENGTH_SHORT).show()
-            return
-        }
+        val oneSignalId = subscription.id ?: ""
 
         val map = hashMapOf(
             "uid" to uid,
             "name" to etEmail.text.toString().substringBefore("@"),
-            "oneSignalId" to oneSignalId
+            "oneSignalId" to oneSignalId,
+            "online" to true,
+            "lastSeen" to System.currentTimeMillis()
         )
 
         FirebaseFirestore.getInstance()
@@ -83,6 +79,33 @@ class MainActivity : AppCompatActivity() {
             .document(uid)
             .set(map, SetOptions.merge())
     }
+    override fun onStart() {
+        super.onStart()
+        updateOnlineStatus(true)
+    }
 
+    override fun onStop() {
+        super.onStop()
+        updateOnlineStatus(false)
+    }
+
+
+    private fun updateOnlineStatus(isOnline: Boolean) {
+        val uid = FirebaseAuth.getInstance().uid ?: return
+
+        val map = if (isOnline) {
+            mapOf("online" to true)
+        } else {
+            mapOf(
+                "online" to false,
+                "lastSeen" to System.currentTimeMillis()
+            )
+        }
+
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(uid)
+            .set(map, SetOptions.merge())
+    }
 
 }
